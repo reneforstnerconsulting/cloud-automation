@@ -48,6 +48,10 @@ def calculateDepthRelationship(layer: Dict, url: str, api: Dict, callee: Dict, e
         if id+str(initialLevel) in callee:
             return calculateDepthRelationship(layer, url, api, callee, entitySelector, entitySelector, startId, index + 1, initialLevel)
         entitySelector = "type(service),entityId({id}),toRelationships.calls({entitySelector})".format(id = id, entitySelector = entitySelector)
+        
+        if entitySelector.count('toRelationships.calls') > 7:
+            print("Maximum depth of 8 levels reached, stopping here")
+            return None
         if sre:
             httpResult = handleGet('{url}/api/v2/entities'.format(url = url), api, {"entitySelector":entitySelector,"from":"now-2h","fields":"fromRelationships.calls,properties.serviceType"})
         else:
@@ -63,7 +67,9 @@ def calculateDepthRelationship(layer: Dict, url: str, api: Dict, callee: Dict, e
             temp = httpResult["entities"][0]
             print("Working on relationships of ({name})".format(name = temp['displayName']))
             print("---")
-            baseline, requestCount = getBaseline(url, api, temp["properties"]['serviceType'], id, timeFrame,warnP,passP)
+            
+            if 'serviceType' not in temp["properties"]: temp["properties"]['serviceType'] = "None"
+            baseline, requestCount = getBaseline(url, api, ['serviceType'], id, timeFrame,warnP,passP)
             if initialLevel in SERVICER:
                 SERVICER[initialLevel] = addServiceInOrder(SERVICER[initialLevel],id,{'id': id, 'name' : temp['displayName'], 'servicetype': temp["properties"]['serviceType'], "requestCount":requestCount, "baseline": baseline},requestCount)
                 if(temp["properties"]["serviceType"] != 'DATABASE_SERVICE'):
